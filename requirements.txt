@@ -1,0 +1,2 @@
+pyTelegramBotAPI==4.13.0
+SQLAlchemy==2.0.20
