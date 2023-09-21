@@ -1,15 +1,11 @@
-import telebot
-
-from configs import TOKEN
 from telebot import types
-from datetime import datetime, timedelta
+from datetime import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from models import User
-from static_data import bot, session, new_services
-from bot_calendar import transfer_event_set_time, transfer_select_time
-from services import TimeOperations, DatabaseOperations, ServiceOperations, visiting_time,\
-    get_estimated_time
+from static_data import bot, session, new_services, visiting_time
+from bot_calendar import TimeOperations
+from services import DatabaseOperations, ServiceOperations
 
 from configs import ADDITIVES_LIST, ADMIN_ID
 
@@ -49,7 +45,7 @@ class Add_event:
         if common_stream:
             bot.register_next_step_handler(message, Add_event.kind_service)
         else:
-            transfer_event_set_time(message)
+            TimeOperations.transfer_event_set_time(message)
 
     @staticmethod
     def kind_service(message, meeting_time=False):
@@ -207,7 +203,7 @@ class Add_event:
 
     @staticmethod
     def event_to_db(user_id: int, meeting_time: datetime):
-        time_price = get_estimated_time(new_services["services"])
+        time_price = TimeOperations.get_estimated_time(new_services["services"])
         order_message = f"Ваше замовлення: {new_services['user_first_name']}\n"\
                         f"дата замовлення: " \
                         f"{TimeOperations.week[meeting_time.strftime('%A')]} " \

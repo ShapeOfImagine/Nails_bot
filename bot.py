@@ -4,70 +4,15 @@ from telebot import types
 from datetime import datetime, timedelta
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from add_event import Add_event
-from static_data import session, bot, calendar, new_services
+from static_data import bot, clear_services, session, visiting_time
 from configs import ADMIN_ID, INSTA_MESSAGE_PART, INSTA_LINK
-from services import visiting_time, create_datetime,\
-    DatabaseOperations, TimeOperations, ServiceOperations
+from admin import Admin_Services
+from add_event import Add_event
+from services import DatabaseOperations, ServiceOperations
+from bot_calendar import TimeOperations
 
 
 admin_id = ADMIN_ID
-
-
-
-class Admin_Services:
-    """Admin user options block"""
-    @staticmethod
-    def admin_start(message):
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        bot.send_message(ADMIN_ID, text=f"Привет {message.from_user.first_name}")
-
-        add_event = types.KeyboardButton("Додати запис")
-        check_events = types.KeyboardButton("Показати активні записи")
-        remove_event = types.KeyboardButton("Видалити запис")
-        check_today = types.KeyboardButton("Хто в мене на сьогодні")
-        check_tomorrow = types.KeyboardButton("Хто в мене на завтра")
-
-        markup.add(add_event, check_events, remove_event, check_today, check_tomorrow)
-        bot.send_message(ADMIN_ID, text="Чим можу допомогти?", reply_markup=markup)
-        bot.register_next_step_handler(message, Admin_Services.admin_services_tree)
-
-    @staticmethod
-    def admin_services_tree(message):
-        if message.text == "Додати запис":
-            start_create_event(message)
-        elif message.text == "Показати активні записи":
-
-            events = DatabaseOperations.get_all_events(session)[0]
-            for event in events:
-                date = f"{event['date'].day}.{calendar[str(event['date'].month)]} " \
-                       f"{event['date'].hour}:{event['date'].minute}"
-
-                order = f"{event['user_first_name']} " \
-                        f" {date}\n {event['procedure1']} " \
-                        f"{event['procedure2']}"
-                bot.send_message(ADMIN_ID, order)
-
-        elif message.text == "Видалити запис":
-            Admin_Services.admin_delete(message)
-
-        elif message.text == "Хто в мене на сьогодні":
-            pass
-        elif message.text == "Хто в мене на завтра":
-            pass
-
-    @staticmethod
-    def admin_delete(message):
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-        events = DatabaseOperations.get_all_events(session)[0]
-        for event in events:
-            date = f"{event['date'].day}.{calendar[str(event['date'].month)]}"
-            order = f"id:{event['user_id']} {event['user_first_name']} {date}\n {event['procedure1']}"
-            markup.add(order)
-        bot.send_message(ADMIN_ID, text="Який саме запис видалити?", reply_markup=markup)
-        bot.register_next_step_handler(message, DatabaseOperations.rem_selected_order)
-
-    """End admin user options block"""
 
 
 @bot.message_handler(commands=["start"])
@@ -166,8 +111,8 @@ def transfer_event(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     order = DatabaseOperations.get_user_procedure(session, message.from_user.id)
     if order:
-        Add_event.wich_day(message, common_stream=False)
-        new_meeting_time = create_datetime(visiting_time)
+        Add_event.wich_day(message)
+        new_meeting_time = TimeOperations.create_datetime(visiting_time)
         """Залишилось придумати як і куди передавати ордер обьект"""
         TimeOperations.change_order_time(order=order, meeting_time=new_meeting_time)
         bot.send_message(message.from_user.id,
@@ -199,33 +144,6 @@ def recall_event(message):
                          reply_markup=markup)
 
 
-def reminder():
-    """"""
-    today_event = TimeOperations.get_order_by_date(datetime.today())
-    if today_event:
-        time_difference = today_event["date"] - datetime.now()
-        if timedelta(hours=1) > time_difference:
-            print("Осталось менше часа к процедуре")
-        else:
-            print(time_difference)
-
-
-def clear_services():
-    """CLEAR TEMPORARY FOLDER AFTER OR BEFORE USERGE"""
-    new_services["services"].clear()
-    new_services["additions"].clear()
-
-
-def final_message(chat_id):
-    keyboard = InlineKeyboardMarkup()
-    to_start = InlineKeyboardButton(text="На головну", callback_data="to_mainboard")
-    bot_order = InlineKeyboardButton(text="також хочу бот", callback_data="need_bot")
-    keyboard.add(to_start, bot_order)
-    bot.send_message(chat_id, text="Якщо ви підприємець і вас зацікавила можливість оптимізації свого бізнесу"
-                                   " за допомогою аналогічного боту або іншого продукту"
-                                   "натисніть (також хочу бот)", reply_markup=keyboard)
-
-
 @bot.message_handler(func=lambda message: message.text == "Змінити запис")
 def user_change_order(message):
     order = DatabaseOperations.get_user_procedure(session, message.from_user.id)
@@ -250,7 +168,7 @@ def user_change_order(message):
         bot.send_message(message.from_user.id, text="У вас немає активних записів, \n"
                                                     "Ви можете вийти на головну і створити")
         # event by user id is not exists
-        final_message(message.chat.id)
+        Add_event.final_message(message.chat.id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "need_bot")
@@ -271,27 +189,15 @@ def start_create_order_handler(call):
     start_create_event(call.message)
 
 
-def transfer_select_time(message):
-    visiting_time.clear()
-    visiting_time["day"] = message.text
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    time_points = TimeOperations.create_visiting_time()
-    for point in time_points:
-        markup.add(str(point))
-    bot.send_message(message.from_user.id,
-                     text=f"Ви вибрали дату {message.text} На який час вас записати?",
-                     reply_markup=markup)
-    bot.register_next_step_handler(message, transfer_event_set_time)
-
-
-def transfer_event_set_time(message):
-    visiting_time["hour"] = message.text
-    new_time = create_datetime(visiting_time)
-    order = DatabaseOperations.get_user_procedure(session, message.from_user.id)
-    TimeOperations.change_order_time(order=order, meeting_time=new_time)
-    bot.send_message(message.from_user.id,
-                     text="Запис успішно перенесено",
-                     reply_markup=types.ReplyKeyboardRemove())
+def reminder():
+    """"""
+    today_event = TimeOperations.get_order_by_date(datetime.today())
+    if today_event:
+        time_difference = today_event["date"] - datetime.now()
+        if timedelta(hours=1) > time_difference:
+            print("Осталось менше часа к процедуре")
+        else:
+            print(time_difference)
 
 
 def start_bot():

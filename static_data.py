@@ -8,7 +8,6 @@ db_url = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine)
 session = Session()
-session = Session()
 bot = telebot.TeleBot(TOKEN)
 
 new_services = {"services": [],
@@ -28,3 +27,9 @@ calendar = {"1": "Січня",
             "10": "Жовтня",
             "11": "Листопада",
             "12": "Грудня"}
+
+
+def clear_services():
+    """CLEAR TEMPORARY FOLDER AFTER OR BEFORE USERGE"""
+    new_services["services"].clear()
+    new_services["additions"].clear()
