@@ -1,15 +1,12 @@
-import sqlite3
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from configs import DB_USER, DB_NAME, DB_HOST, DB_PASSWORD
 from datetime import datetime
+from static_data import session, db_url
 
-db_url = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
-sqliteurl = "'sqlite:////home/salamandra/PycharmProjects/pythonProject/db1.db'"
 engine = create_engine(db_url)
 
 Base = declarative_base()
+
 
 
 def _test_connect():
@@ -41,7 +38,7 @@ class User(Base):
 
 
 class Procedure(Base):
-
+    """Manicure procedures list"""
     __tablename__ = "procedure"
 
     proc_name = Column(String, unique=True, primary_key=True)
@@ -52,6 +49,46 @@ class Procedure(Base):
         self.proc_name = proc_name
         self.proc_price = proc_price
         self.proc_time = proc_time
+
+    def add_procedure(self):
+        session.add(self)
+        session.commit()
+        session.close()
+
+    @staticmethod
+    def get_all() -> list:
+        all_items = session.query(Procedure).all()
+        return all_items
+
+
+    @staticmethod
+    def get_procedure(proc_name: str):
+        procedure = session.query(Procedure).filter_by(proc_name=proc_name).first()
+        return procedure
+
+
+class ProcedurePedikure(Base):
+
+    __tablename__ = "procedure_pedikure"
+
+    proc_name = Column(String, unique=True, primary_key=True)
+    proc_price = Column(Integer)
+    proc_time = Column(Integer)
+
+    def __init__(self, proc_name, proc_price, proc_time):
+        self.proc_name = proc_name
+        self.proc_price = proc_price
+        self.proc_time = proc_time
+
+    def add_procedure(self):
+        session.add(self)
+        session.commit()
+        session.close()
+
+    @staticmethod
+    def get_procedure(proc_name: str):
+        procedure = session.query(ProcedurePedikure).filter_by(proc_name=proc_name).first()
+        return procedure
 
 
 class Addition(Base):
@@ -97,8 +134,17 @@ class Order(Base):
         self.meeting_time = new_meeting_time
 
 
-Session = sessionmaker(bind=engine)
-session = Session()
 
-
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine)
+#
+#
+# procedure = Procedure(
+#     proc_name="Педикюр гігієнічний",
+#     proc_price=100,
+#     proc_time=2
+#
+# )
+#
+# Procedure.add_procedure(procedure)
+# print(proc)
+# print(get_procedure("Нарощення").proc_price)

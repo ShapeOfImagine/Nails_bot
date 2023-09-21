@@ -2,25 +2,13 @@ import re
 import random
 from datetime import datetime, timedelta
 
-from models import User, Session, Procedure, Addition, Order
+from static_data import session, Session, visiting_time
+from models import User, Procedure, Order
 from configs import ADMIN_ID
 
 
-session = Session()
-visiting_time = {}
+# temporary storage of services
 
-calendar = {"1": "Січня",
-            "2": "Лютого",
-            "3": "Березня",
-            "4": "Квітня",
-            "5": "Травня",
-            "6": "Червня",
-            "7": "Липня",
-            "8": "Серпня",
-            "9": "Вересня",
-            "10": "Жовтня",
-            "11": "Листопада",
-            "12": "Грудня"}
 
 
 class DatabaseOperations:
@@ -297,6 +285,28 @@ class ServiceOperations:
                          last_name=last_name,
                          mobile=mobile)
         return fake_user
+
+
+def get_estimated_time(procedures: list) -> dict:
+    estimate_time = 0
+    estimate_price = 0
+    for procedure in procedures:
+        print(procedure)
+        estimate_time += Procedure.get_procedure(proc_name=procedure).proc_time
+        estimate_price += Procedure.get_procedure(proc_name=procedure).proc_price
+
+    return {"estim_time": estimate_time,
+            "estim_price": estimate_price}
+
+
+def create_datetime(visiting_time: dict) -> datetime:
+    year = int(f"20{visiting_time['day'][6:8]}")
+    month = int(visiting_time['day'][3:5])
+    day = int(visiting_time['day'][0:2])
+    hour = int(visiting_time['hour'][0:2])
+    minute = int(visiting_time['hour'][3:5])
+    new_datetime = datetime(year, month, day, hour, minute)
+    return new_datetime
 
 
 def _add_test_user():
