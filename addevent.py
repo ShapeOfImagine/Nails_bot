@@ -2,10 +2,10 @@ from telebot import types
 from datetime import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from models import User
-from static_data import bot, session, new_services, visiting_time
-from bot_calendar import TimeOperations
-from services import DatabaseOperations, ServiceOperations
+from models import User, Procedure
+from static_data import bot, new_services, visiting_time, clear_services
+from timeoperations import TimeOperations
+from services import ServiceOperations
 
 from configs import ADDITIVES_LIST, ADMIN_ID
 
@@ -13,47 +13,12 @@ from configs import ADDITIVES_LIST, ADMIN_ID
 admin_id = ADMIN_ID
 
 
-class Add_event:
+class AddEvent:
     """Adding event methods block"""
-    @staticmethod
-    def wich_day(message):
-        # select order day
-        user_id = message.from_user.id
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        days_list = TimeOperations.get_free_dates()
-        for day in days_list:
-            markup.add(str(day))
-        bot.send_message(user_id, text="На який день бажаєта записатись?", reply_markup=markup)
-
-        bot.register_next_step_handler(message, Add_event.select_time)
-        # else:
-        #     print("false")
-        #     bot.register_next_step_handler(message, transfer_select_time)
 
     @staticmethod
-    def select_time(message, common_stream=True):
-        # select event time
-        visiting_time.clear()
-        visiting_time["day"] = message.text
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        time_points = TimeOperations.create_visiting_time()
-        for point in time_points:
-            markup.add(str(point))
-        bot.send_message(message.from_user.id,
-                         text=f"Ви вибрали дату {message.text} На який час вас записати?",
-                         reply_markup=markup)
-        if common_stream:
-            bot.register_next_step_handler(message, Add_event.kind_service)
-        else:
-            TimeOperations.transfer_event_set_time(message)
+    def kind_service(message):
 
-    @staticmethod
-    def kind_service(message, meeting_time=False):
-        if message.text.replace(":", "").isdigit():
-            visiting_time["hour"] = message.text
-        if meeting_time:
-            visiting_time["hour"] = meeting_time.strftime("%H:%M")
-            visiting_time["day"] = meeting_time.strftime("%d.%m.%y")
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         # event by user id is not exists
         manikyr = types.KeyboardButton("Ручки 💅")
@@ -62,12 +27,8 @@ class Add_event:
         bot.send_message(message.from_user.id,
                          text="Оберіть процедуру",
                          reply_markup=markup)
-        if meeting_time:
-            # изменить на ветку без вибора времени
-            bot.register_next_step_handler(message, Add_event.hands_or_foots_selection)
-        else:
-            bot.register_next_step_handler(message, Add_event.hands_or_foots_selection)
 
+        bot.register_next_step_handler(message, AddEvent.hands_or_foots_selection)
 
     @staticmethod
     def hands_or_foots_selection(message):
@@ -75,9 +36,9 @@ class Add_event:
         new_services["kind_nails_procedure"] = message.text[:5]
 
         if message.text.lower() == "ручки 💅":
-            Add_event.hands_services(message)
+            AddEvent.hands_services(message)
         elif message.text.lower() == "ніжки 👣":
-            Add_event.foots_services(message)
+            AddEvent.foots_services(message)
 
     @staticmethod
     def hands_services(message):
@@ -88,7 +49,7 @@ class Add_event:
         manik4 = types.KeyboardButton("Нарощення")
         markup.add(manik1, manik2, manik3, manik4)
         bot.send_message(message.from_user.id, text="Оберіть, що саме вас цікавить ⬇️", reply_markup=markup)
-        bot.register_next_step_handler(message, Add_event.additions)
+        bot.register_next_step_handler(message, AddEvent.additions)
 
     @staticmethod
     def foots_services(message):
@@ -97,7 +58,7 @@ class Add_event:
         pedik2 = types.KeyboardButton("Педикюр з покриттям")
         markup.add(pedik1, pedik2)
         bot.send_message(message.from_user.id, text="Оберіть, що саме вас цікавить ⬇️", reply_markup=markup)
-        bot.register_next_step_handler(message, Add_event.kind_of_foot_service)
+        bot.register_next_step_handler(message, AddEvent.kind_of_foot_service)
 
     @staticmethod
     def kind_of_foot_service(message):
@@ -108,7 +69,7 @@ class Add_event:
             foots_gigiena2 = types.KeyboardButton("Пальчики + стопа")
             markup.add(foots_gigiena1, foots_gigiena2)
         bot.send_message(message.from_user.id, text="Оберіть, що саме вас цікавить ⬇️", reply_markup=markup)
-        bot.register_next_step_handler(message, Add_event.additions)
+        bot.register_next_step_handler(message, AddEvent.additions)
 
     @staticmethod
     def additions(message):
@@ -124,9 +85,9 @@ class Add_event:
         markup.add(additions1, additions2, additions3, additions4, additions5, additions6, additions7)
         bot.send_message(message.from_user.id, text="Оберіть додаткові послуги", reply_markup=markup)
         if len(new_services["services"]) + len(new_services["additions"]) < 4:
-            bot.register_next_step_handler(message, Add_event.second_event_request)
+            bot.register_next_step_handler(message, AddEvent.second_event_request)
         else:
-            bot.register_next_step_handler(message, Add_event.wich_day)
+            bot.register_next_step_handler(message, AddEvent.wich_day)
 
     @staticmethod
     def second_event_request(message):
@@ -137,44 +98,75 @@ class Add_event:
             final_message2 = types.KeyboardButton("Завершити запис")
             markup.add(final_message1, final_message2)
             bot.send_message(message.from_user.id, text="Бажаєте додати ще послуги?", reply_markup=markup)
-            bot.register_next_step_handler(message, Add_event.second_event)
+            bot.register_next_step_handler(message, AddEvent.second_event)
 
         elif new_services["kind_nails_procedure"] == "Ніжки":
             final_message1 = types.KeyboardButton("Хочу ще манікюр")
             final_message2 = types.KeyboardButton("Завершити запис")
             markup.add(final_message1, final_message2)
             bot.send_message(message.from_user.id, text="Бажаєте додати ще послуги?", reply_markup=markup)
-            bot.register_next_step_handler(message, Add_event.second_event)
+            bot.register_next_step_handler(message, AddEvent.second_event)
 
     @staticmethod
     def second_event(message):
         if message.text == "Хочу ще манікюр":
-            Add_event.hands_services(message)
+            AddEvent.hands_services(message)
         elif message.text == "Хочу ще педикюр":
-            Add_event.foots_services(message)
+            AddEvent.foots_services(message)
         else:
-            Add_event.final(message)
+            AddEvent.wich_day(message)
+
+    @staticmethod
+    def wich_day(message, common=True):
+        # select order day
+        if message.text in ADDITIVES_LIST:
+            new_services["additions"].append(message.text)
+        user_id = message.from_user.id
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+        days_list = TimeOperations.get_free_dates()
+        for day in days_list:
+            markup.add(str(day))
+        bot.send_message(user_id, text="На який день бажаєта записатись?", reply_markup=markup)
+        if common:
+            bot.register_next_step_handler(message, AddEvent.select_time)
+        else:
+            print("false")
+            bot.register_next_step_handler(message, TimeOperations.transfer_select_time)
+
+    @staticmethod
+    def select_time(message, common_stream=True):
+        # select event time
+        if common_stream:
+            visiting_time.clear()
+            visiting_time["day"] = message.text
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+        time_points = TimeOperations.create_visiting_time()
+        for point in time_points:
+            markup.add(str(point))
+        bot.send_message(message.from_user.id,
+                         text=f"На яку годину вас записати?",
+                         reply_markup=markup)
+        bot.register_next_step_handler(message, AddEvent.final)
 
     @staticmethod
     def final(message, meeting_time=False):
         """ADD EVENT TO DB IF USER ALREADY EXISTS"""
+        print(message.text)
+        visiting_time["hour"] = message.text
         if not meeting_time:
             print(visiting_time["day"], visiting_time["hour"])
-        if message.text in ADDITIVES_LIST:
-            new_services["additions"].append(message.text)
         new_services["user_first_name"] = message.from_user.first_name
-        if not DatabaseOperations.user_exist(session, message.from_user.id):
+        if not User.user_exist(message.from_user.id):
             bot.send_message(message.from_user.id,
                              text="Вкажіть ваш номер мобільного для зворотнього зв'язку",
                              reply_markup=types.ReplyKeyboardRemove())
-            bot.register_next_step_handler(message, Add_event.get_user_phone)
+            bot.register_next_step_handler(message, AddEvent.get_user_phone)
         else:
             bot.send_message(message.from_user.id,
-                         text="________________________________",
-                         reply_markup=types.ReplyKeyboardRemove())
-            new_services["user_phone"] = DatabaseOperations.get_user_info(session, message.from_user.id).user_mobile
-            Add_event.event_to_db(user_id=message.from_user.id, meeting_time=TimeOperations.get_visiting_datetime())
-
+                             text="________________________________",
+                             reply_markup=types.ReplyKeyboardRemove())
+            new_services["user_phone"] = User.get_user(message.from_user.id).user_mobile
+            AddEvent.event_to_db(user_id=message.from_user.id, meeting_time=TimeOperations.get_visiting_datetime())
 
     @staticmethod
     def get_user_phone(message):
@@ -188,18 +180,18 @@ class Add_event:
                             first_name=message.from_user.first_name,
                             last_name=message.from_user.last_name,
                             mobile=new_services["user_phone"])
-                DatabaseOperations.add_user(session, user)
-                Add_event.event_to_db(user_id=message.from_user.id, meeting_time=datetime.utcnow())
+                User.add_user(user)
+                AddEvent.event_to_db(user_id=message.from_user.id, meeting_time=datetime.utcnow())
 
             else:
                 """IF PHONE IS NOT VALID TRY AGAIN"""
                 bot.send_message(message.from_user.id, text="Ви вказали некоректний номер🤨, введіть будь ласка ще раз")
-                bot.register_next_step_handler(message, Add_event.get_user_phone)
+                bot.register_next_step_handler(message, AddEvent.get_user_phone)
 
         except AttributeError as err:
             print("Error get phone", err)
             bot.send_message(message.from_user.id, text="Ви вказали некоректиний номер🤨, введіть будьласка ще раз")
-            bot.register_next_step_handler(message, Add_event.get_user_phone)
+            bot.register_next_step_handler(message, AddEvent.get_user_phone)
 
     @staticmethod
     def event_to_db(user_id: int, meeting_time: datetime):
@@ -214,16 +206,27 @@ class Add_event:
                         f"Орієнтовна ціна: {time_price['estim_price']}\n" \
                         f"Орієнтовна тривалість: {time_price['estim_time']} години"
 
-
-
         print(order_message)
         bot.send_message(admin_id, order_message)
-        order = ServiceOperations.create_order(new_services=new_services, user_id=user_id, time=meeting_time)
-        DatabaseOperations.add_procedure(session, order)
-        bot.send_message(user_id, f"Ви успішно записались \n"
-                                  f"{order_message}")
+        if user_id == ADMIN_ID:
+            fake_user = ServiceOperations.get_fake_user()
+            User.add_user(fake_user)
+            order = ServiceOperations.create_order(new_services=new_services,
+                                                   user_id=fake_user.user_id,
+                                                   time=meeting_time)
+            print("admin order")
+            Procedure.add_procedure(order)
+            bot.send_message(user_id, f"Ви успішно записались \n"
+                                      f"{order_message}")
+            AddEvent.final_message(fake_user.user_id)
+        else:
+            order = ServiceOperations.create_order(new_services=new_services, user_id=user_id, time=meeting_time)
+            Procedure.add_procedure(order)
+            bot.send_message(user_id, f"Ви успішно записались \n"
+                                      f"{order_message}")
+            AddEvent.final_message(user_id)
+
         clear_services()
-        Add_event.final_message(user_id)
 
     @staticmethod
     def final_message(chat_id):
@@ -232,13 +235,7 @@ class Add_event:
         bot_order = InlineKeyboardButton(text="також хочу бот", callback_data="need_bot")
         keyboard.add(to_start, bot_order)
         bot.send_message(chat_id, text="Якщо ви підприємець і вас зацікавила можливість оптимізації свого бізнесу"
-                                        " за допомогою аналогічного боту або іншого продукту"
-                                        "натисніть (також хочу бот)", reply_markup=keyboard)
+                                       " за допомогою аналогічного боту або іншого продукту"
+                                       " натисніть (також хочу бот)", reply_markup=keyboard)
 
         """And of Adding event methods block"""
-
-
-def clear_services():
-    """CLEAR TEMPORARY FOLDER AFTER OR BEFORE USERGE"""
-    new_services["services"].clear()
-    new_services["additions"].clear()
