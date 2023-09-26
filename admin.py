@@ -3,10 +3,11 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from configs import ADMIN_ID
 from static_data import bot, session, calendar
 from addevent import AddEvent
+from models import Order
 from services import DatabaseOperations
 
 
-class Admin_Services:
+class AdminServices:
     """Admin user options block"""
     @staticmethod
     def admin_start(message):
@@ -76,7 +77,7 @@ class Admin_Services:
 def start_create_event(message):
     """START OF CREATING ORDER"""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    order = DatabaseOperations.get_user_procedure(session, message.from_user.id)
+    order = Order.get_user_order(message.from_user.id)
     if message.from_user.id != int(ADMIN_ID):
         if order:
             order_message = f"{order.meeting_time.strftime('%d.%m.%y %H:%M')} \n" \

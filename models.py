@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, \
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timedelta
 from static_data import session, db_url
 
 engine = create_engine(db_url)
@@ -187,23 +187,84 @@ class Order(Base):
         self.meeting_time = new_meeting_time
 
 
-class WeekShedule(Base):
-    __tablename__ = "week_shedule"
+class DefaultWeek(Base):
+
+    __tablename__ = "default_week"
 
     id = Column(Integer, primary_key=True)
     day_of_week = Column(String(20), unique=True, nullable=False)
     start_time = Column(Time)
     end_time = Column(Time)
-    coffe_break = Column(Interval)
-    week_duration = Column(Interval)
+    start_coffee_break = Column(Time)
+    coffee_break_duration = Column(Interval)
 
-    def __init__(self, day_of_week, start_time, end_time, coffe_break, week_duration):
+    def __init__(self, day_of_week, start_time, end_time, start_coffee_break, coffee_break_duration):
         super().__init__()
         self.day_of_week = day_of_week
-        self.start_time = start_time
-        self.end_time = end_time
-        self.coffe_break = coffe_break
-        self.week_duration = week_duration
+        self.start_time = datetime.combine(datetime.today(), start_time)
+        self.end_time = datetime.combine(datetime.today(), end_time)
+        self.day_duration = self.end_time - self.start_time
+        self.start_coffee_break = datetime.combine(datetime.today(), start_coffee_break)
+        self.coffee_break_duration = coffee_break_duration
+
+        self.end_coffee_break = self.start_coffee_break + self.coffee_break_duration
+
+    def __str__(self):
+        end_coffee_break = datetime.combine(datetime.today(), self.start_coffee_break) + self.coffee_break_duration
+        str_represent = f"""
+        День тижня: {self.day_of_week}\n
+        Робочий день починається: {self.start_time.strftime('%H:%M')}\n
+        Робочий день закінчується: {self.end_time.strftime('%H:%M')}\n
+        Початок кава брейку: {self.start_coffee_break.strftime('%H:%M')}\n
+        Кінець кава брейку: {end_coffee_break.strftime('%H:%M')}
+        """
+        return str_represent
+
+    def add_week_day(self):
+        session.add(self)
+        session.commit()
+        session.close()
+
+    def update_start_time(self, new_start_time):
+        self.start_time = new_start_time
+
+    @staticmethod
+    def get_day(day_of_week):
+        return session.query(DefaultWeek).filter_by(day_of_week=day_of_week).first()
+
+    @staticmethod
+    def set_day(day_of_week, start_time,
+                end_time, start_coffee_break, coffee_break_duration):
+        day = DefaultWeek.get_day(day_of_week)
+        day.start_time = start_time
+        day.end_time = end_time
+        day.start_coffee_break = start_coffee_break
+        day.coffee_break_duration = coffee_break_duration
+
+    @staticmethod
+    def get_all_week():
+        return session.query(DefaultWeek).all()
+
+
+class WeekShedule(DefaultWeek):
+    __tablename__ = "week_shedule1"
+
+    id = Column(Integer, primary_key=True)
+    day_of_week = Column(String(20), ForeignKey("default_week.day_of_week"), unique=True, nullable=False, )
+    start_week = Column(Date)
+
+    def __init__(self, day_of_week, start_time, end_time, start_coffee_break, coffee_break_duration,
+                 start_week):
+        super().__init__(day_of_week, start_time, end_time, start_coffee_break, coffee_break_duration)
+        self.start_week = start_week
+        self.end_week = self.start_week + timedelta(days=6)
+
+    def __str__(self):
+        str_represent = f"""
+        Тиждень починається: {self.start_week.strftime('%d.%m.%y')}\n
+        Тиждень закінчується: {self.end_week.strftime('%d.%m.%y')}\n
+        """
+        return str_represent
 
 
 class DayShedule(Base):
@@ -229,7 +290,7 @@ class DayShedule(Base):
         self.coffe_break = coffe_break
 
 
-# Base.metadata.create_all(engine)
+Base.metadata.create_all(engine)
 #
 # #
 # procedure = Procedure(

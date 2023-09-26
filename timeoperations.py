@@ -95,7 +95,7 @@ class TimeOperations:
     def transfer_event_set_time(message):
         visiting_time["hour"] = message.text
         new_time = TimeOperations.create_datetime(visiting_time)
-        order = DatabaseOperations.get_user_procedure(session, message.from_user.id)
+        order = Order.get_user_order(message.from_user.id)
         TimeOperations.change_order_time(order=order, meeting_time=new_time)
         bot.send_message(message.from_user.id,
                          text=f"Запис успішно перенесено на "

@@ -6,7 +6,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from static_data import bot, clear_services
 from configs import ADMIN_ID, INSTA_MESSAGE_PART, INSTA_LINK
-from admin import Admin_Services
+from admin import AdminServices
 from addevent import AddEvent
 from models import User, Order
 from services import ServiceOperations
@@ -24,7 +24,7 @@ def start(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
 
     if message.from_user.id == int(ADMIN_ID):
-        Admin_Services.admin_start(message)
+        AdminServices.admin_start(message)
 
     else:
         if User.user_exist(message.from_user.id):
@@ -83,7 +83,7 @@ def start_create_event(message):
                      or message.text == "Видалити запис")
 def cancel_event(message):
     if message.from_user.id == int(ADMIN_ID):
-        Admin_Services.admin_delete(message)
+        AdminServices.admin_delete(message)
         return
     """REMOVE ORDER IF EXISTS"""
     keyboard = InlineKeyboardMarkup()
