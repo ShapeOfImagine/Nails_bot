@@ -1,6 +1,6 @@
 import re
 import random
-
+from telebot.types import User, Message
 from static_data import session, Session
 from models import User, Order
 from configs import ADMIN_ID
@@ -69,14 +69,13 @@ class DatabaseOperations:
 
 class ServiceOperations:
     @staticmethod
-    def create_order(new_services: dict, user_id: int, time) -> Order:
+    def create_order(new_services: dict, user, time) -> Order:
         """ADD PROCEDURE RECORD HAVE DIFFERENT COUNT OF PARAMETERS"""
-
-        # create fake user_id for admin order
-        if user_id == int(ADMIN_ID):
-            fake_user = ServiceOperations.get_fake_user()
-            User.add_user(fake_user)
-
+        if isinstance(user, User):
+            session.add(user)
+            user_id = user.user_id
+        else:
+            user_id = user
         if len(new_services["services"]) + len(new_services["additions"]) == 2:
             order = Order(
                 user_id=user_id,
@@ -147,13 +146,13 @@ class ServiceOperations:
                       first_name="fakeuser",
                       last_name="fakeuser",
                       mobile="067576767") -> User:
-        random_number = random.randint(100000, 999999)
+        random_number = random.randint(1000000, 9999999)
         exist = User.user_exist(random_number)
         if exist:
-            random_number2 = random.randint(100000, 999999)
-            user_id = random_number2
+            random_number2 = random.randint(1000000, 9999999)
+            user_id = str(random_number2)
         else:
-            user_id = random_number
+            user_id = str(random_number)
         fake_user = User(user_id=user_id,
                          username=username,
                          first_name=first_name,
@@ -162,7 +161,20 @@ class ServiceOperations:
         return fake_user
 
 
-def _add_test_user():
+def callback_convert(call):
+    # Создаем объект Message на основе данных CallbackQuery
+    message = Message(message_id=call.message.message_id,
+                      from_user=call.from_user,
+                      chat=call.message.chat,
+                      content_type=call.message.content_type,
+                      json_string=call.message.json,
+                      options="",
+                      date=call.data)
+
+    return message
+
+
+def add_test_user():
     user = User(user_id=1587874848,
                 username="username",
                 first_name="first_name",

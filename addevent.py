@@ -2,10 +2,11 @@ from telebot import types
 from datetime import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from models import User, Procedure
-from static_data import bot, new_services, visiting_time, clear_services
+from models import User, Procedure, Order
+from static_data import bot, new_services, visiting_time, clear_services, session, Session
 from timeoperations import TimeOperations
 from services import ServiceOperations
+
 
 from configs import ADDITIVES_LIST, ADMIN_ID
 
@@ -118,17 +119,18 @@ class AddEvent:
 
     @staticmethod
     def wich_day(message, common=True):
-        # select order day
-        if message.text in ADDITIVES_LIST:
-            new_services["additions"].append(message.text)
-        user_id = message.from_user.id
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
         days_list = TimeOperations.get_free_dates()
         for day in days_list:
             markup.add(str(day))
-        bot.send_message(user_id, text="На який день бажаєта записатись?", reply_markup=markup)
+
+        user_id = message.from_user.id
+
+        bot.send_message(user_id, text="На який день бажаєте записатись?", reply_markup=markup)
         if common:
+
             bot.register_next_step_handler(message, AddEvent.select_time)
+
         else:
             print("false")
             bot.register_next_step_handler(message, TimeOperations.transfer_select_time)
@@ -136,6 +138,7 @@ class AddEvent:
     @staticmethod
     def select_time(message, common_stream=True):
         # select event time
+        print("select time")
         if common_stream:
             visiting_time.clear()
             visiting_time["day"] = message.text
@@ -208,20 +211,23 @@ class AddEvent:
 
         print(order_message)
         bot.send_message(admin_id, order_message)
-        if user_id == ADMIN_ID:
+        if str(user_id) == str(admin_id):
+            print("IS admin order")
             fake_user = ServiceOperations.get_fake_user()
+            print(fake_user)
             User.add_user(fake_user)
+
             order = ServiceOperations.create_order(new_services=new_services,
-                                                   user_id=fake_user.user_id,
+                                                   user=fake_user,
                                                    time=meeting_time)
-            print("admin order")
-            Procedure.add_procedure(order)
+
+            Order.add_order(order)
             bot.send_message(user_id, f"Ви успішно записались \n"
                                       f"{order_message}")
-            AddEvent.final_message(fake_user.user_id)
+            AddEvent.final_message(user_id)
         else:
-            order = ServiceOperations.create_order(new_services=new_services, user_id=user_id, time=meeting_time)
-            Procedure.add_procedure(order)
+            order = ServiceOperations.create_order(new_services=new_services, user=user_id, time=meeting_time)
+            Order.add_order(order)
             bot.send_message(user_id, f"Ви успішно записались \n"
                                       f"{order_message}")
             AddEvent.final_message(user_id)

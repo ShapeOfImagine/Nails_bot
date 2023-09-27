@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import relationship
 from datetime import datetime, timedelta
-from static_data import session, db_url
+from static_data import session, db_url, Session
 
 engine = create_engine(db_url)
 
@@ -39,7 +39,17 @@ class User(Base):
         self.user_last_name = last_name
         self.user_mobile = mobile
 
+    def __str__(self):
+        user_string = f"""
+        ID: {self.user_id}\n
+        username: {self.username}\n
+        first_name: {self.user_first_name}\n
+        last_name: {self.user_last_name}\n
+        mobile: {self.user_mobile}"""
+        return user_string
+
     def add_user(self):
+        session = Session()
         session.add(self)
         session.commit()
         session.close()
@@ -166,6 +176,11 @@ class Order(Base):
         self.procedure3 = procedure3
         self.procedure4 = procedure4
         self.additions = additions
+
+    def add_order(self):
+        session.add(self)
+        session.commit()
+        session.close()
 
     @staticmethod
     def get_user_order(user_id):

@@ -9,7 +9,7 @@ from configs import ADMIN_ID, INSTA_MESSAGE_PART, INSTA_LINK
 from admin import AdminServices
 from addevent import AddEvent
 from models import User, Order
-from services import ServiceOperations
+from services import ServiceOperations, callback_convert
 from timeoperations import TimeOperations
 
 
@@ -179,10 +179,8 @@ def check_button(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "create_order")
 def start_create_order_handler(call):
-    print("here")
-    bot.answer_callback_query(call.id, "створити запис")
-
-    start_create_event(call.message)
+    message = callback_convert(call)
+    AddEvent.kind_service(message)
 
 
 def reminder():
