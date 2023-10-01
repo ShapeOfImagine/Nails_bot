@@ -9,7 +9,7 @@ from configs import ADMIN_ID, INSTA_MESSAGE_PART, INSTA_LINK
 from admin import AdminServices
 from addevent import AddEvent
 from models import User, Order
-from services import ServiceOperations, callback_convert
+from services import ServiceOperations
 from timeoperations import TimeOperations
 
 
@@ -179,7 +179,7 @@ def check_button(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "create_order")
 def start_create_order_handler(call):
-    message = callback_convert(call)
+    message = ServiceOperations.callback_convert(call)
     AddEvent.kind_service(message)
 
 
@@ -196,13 +196,14 @@ def reminder():
 
 def start_bot():
     while True:
-        # try:
+        try:
             # Start polling
-        bot.polling(none_stop=True, interval=0, timeout=30)
-        # except Exception as e:
-        #     print(f"An error occurred: {e}")
-        #     print("Retrying in 3 seconds...")
-        #     time.sleep(3)
+            bot.polling(none_stop=True, interval=0, timeout=30)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            print("Retrying in 3 seconds...")
+            time.sleep(2)
+            bot.send_message(ADMIN_ID, text="Упс якась помилка перезапускаюсь")
 
 
 if __name__ == "__main__":

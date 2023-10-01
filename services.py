@@ -1,16 +1,17 @@
 import re
 import random
-from telebot.types import User, Message
-from static_data import session, Session
+from datetime import time, timedelta
+from telebot.types import User, Message, ReplyKeyboardRemove
+from static_data import session, Session, bot
 from models import User, Order
-from configs import ADMIN_ID
 
 
 class DatabaseOperations:
     def __init__(self, session: Session = session):
         self.session = session
 
-    def get_all_events(self) -> list:
+    @staticmethod
+    def get_all_events() -> list:
         # return list of all created events dicts
         all_events = session.query(Order).all()
         order_dicts = []
@@ -54,16 +55,21 @@ class DatabaseOperations:
 
         return [order_dicts]
 
-    def rem_selected_order(self, message):
+    @staticmethod
+    def rem_selected_order(message):
+        print(message.from_user)
         user_id = re.findall(r'\d+', message.text[3:15])
         try:
             Order.remove_order_record(user_id[0])
+            bot.send_message(message.from_user.id, text="Запис видалено", reply_markup=ReplyKeyboardRemove())
+
         except IndexError:
             print("Record was not deleted")
         except TypeError:
             print("Message not found")
 
-    def change_order(self, order: Order):
+    @staticmethod
+    def change_order(order: Order):
         order_time = order.meeting_time
 
 
@@ -160,18 +166,40 @@ class ServiceOperations:
                          mobile=mobile)
         return fake_user
 
+    @staticmethod
+    def callback_convert(call) -> Message:
+        # reformat CallbackQuery to Message object
+        message = Message(message_id=call.message.message_id,
+                          from_user=call.from_user,
+                          chat=call.message.chat,
+                          content_type=call.message.content_type,
+                          json_string=call.message.json,
+                          options="",
+                          date=call.data)
 
-def callback_convert(call):
-    # Создаем объект Message на основе данных CallbackQuery
-    message = Message(message_id=call.message.message_id,
-                      from_user=call.from_user,
-                      chat=call.message.chat,
-                      content_type=call.message.content_type,
-                      json_string=call.message.json,
-                      options="",
-                      date=call.data)
+        return message
 
-    return message
+    @staticmethod
+    def mess_to_time(mess: str) -> time or bool:
+        if ":" in mess and mess.replace(":", "").isdigit():
+            if int(mess.split(":")[0]) in range(0, 24) and int(mess.split(":")[1]) in range(0, 60):
+                time_mess = time(int(mess.split(":")[0]), int(mess.split(":")[1]))
+                return time_mess
+            else:
+                return False
+        else:
+            return False
+
+    @staticmethod
+    def mess_to_timedelta(mess: str) -> timedelta or bool:
+        if ":" in mess and mess.replace(":", "").isdigit():
+            if int(mess.split(":")[0]) in range(0, 24) and int(mess.split(":")[1]) in range(0, 60):
+                delta = timedelta(hours=int(mess.split(":")[0]), minutes=int(mess.split(":")[1]))
+                return delta
+            else:
+                return False
+        else:
+            return False
 
 
 def add_test_user():

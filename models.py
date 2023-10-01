@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, \
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import relationship
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from static_data import session, db_url, Session
 
 engine = create_engine(db_url)
@@ -240,8 +240,17 @@ class DefaultWeek(Base):
         session.commit()
         session.close()
 
-    def update_start_time(self, new_start_time):
+    def update_start_time(self, new_start_time: time):
         self.start_time = new_start_time
+
+    def update_end_day(self, new_end_day: time):
+        self.end_time = new_end_day
+
+    def update_start_break(self, new_start_break: time):
+        self.start_coffee_break = new_start_break
+
+    def update_break_duration(self, new_break_duration):
+        self.coffee_break_duration = new_break_duration
 
     @staticmethod
     def get_day(day_of_week):

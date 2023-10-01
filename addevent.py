@@ -2,8 +2,8 @@ from telebot import types
 from datetime import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from models import User, Procedure, Order
-from static_data import bot, new_services, visiting_time, clear_services, session, Session
+from models import User, Order
+from static_data import bot, new_services, visiting_time, clear_services
 from timeoperations import TimeOperations
 from services import ServiceOperations
 

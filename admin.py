@@ -1,10 +1,11 @@
 from telebot import types
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from configs import ADMIN_ID
 from static_data import bot, session, calendar
 from addevent import AddEvent
 from models import Order
-from services import DatabaseOperations
+from services import DatabaseOperations, ServiceOperations
+from bot_calendar import CalendarHandlers
 
 
 class AdminServices:
@@ -12,21 +13,22 @@ class AdminServices:
     @staticmethod
     def admin_start(message):
         keyboard = InlineKeyboardMarkup()
-        bot.send_message(ADMIN_ID, text=f"Привет {message.from_user.first_name}")
+        bot.send_message(ADMIN_ID, text=f"Привіт {message.from_user.first_name}")
 
         add_event = InlineKeyboardButton("Додати запис", callback_data="create_order")
         check_events = InlineKeyboardButton("Показати активні записи", callback_data="show_active_events")
         remove_event = InlineKeyboardButton("Видалити запис", callback_data="remove_event")
         check_today = InlineKeyboardButton("Хто в мене на сьогодні", callback_data="show_today_events")
         check_tomorrow = InlineKeyboardButton("Хто в мене на завтра", callback_data="show_tomorrow_events")
+        shedule_settings = InlineKeyboardButton("Керування розкладом", callback_data="schedule_settings")
 
-        keyboard.add(add_event, check_events, remove_event, check_today, check_tomorrow)
+        keyboard.add(add_event, check_events, remove_event, check_today, check_tomorrow, shedule_settings)
         bot.send_message(ADMIN_ID, text="Чим можу допомогти?", reply_markup=keyboard)
 
     @staticmethod
     @bot.callback_query_handler(func=lambda call: call.data == "show_active_events")
-    def show_active_events():
-        events = DatabaseOperations.get_all_events(session)[0]
+    def show_active_events(call):
+        events = DatabaseOperations.get_all_events()[0]
         for event in events:
             date = f"{event['date'].day}.{calendar[str(event['date'].month)]} " \
                    f"{event['date'].hour}:{event['date'].minute}"
@@ -34,42 +36,38 @@ class AdminServices:
             order = f"{event['user_first_name']} " \
                     f" {date}\n {event['procedure1']} " \
                     f"{event['procedure2']}"
-            bot.send_message(ADMIN_ID, order)
-
-    # @staticmethod
-    # def admin_services_tree(message):
-    #     if message.text == "Додати запис":
-    #         start_create_event(message)
-    #     elif message.text == "Показати активні записи":
-    #
-    #         events = DatabaseOperations.get_all_events(session)[0]
-    #         for event in events:
-    #             date = f"{event['date'].day}.{calendar[str(event['date'].month)]} " \
-    #                    f"{event['date'].hour}:{event['date'].minute}"
-    #
-    #             order = f"{event['user_first_name']} " \
-    #                     f" {date}\n {event['procedure1']} " \
-    #                     f"{event['procedure2']}"
-    #             bot.send_message(ADMIN_ID, order)
-    #
-    #     elif message.text == "Видалити запис":
-    #         Admin_Services.admin_delete(message)
-    #
-    #     elif message.text == "Хто в мене на сьогодні":
-    #         pass
-    #     elif message.text == "Хто в мене на завтра":
-    #         pass
+            bot.send_message(ADMIN_ID, order, reply_markup=ReplyKeyboardRemove())
 
     @staticmethod
-    def admin_delete(message):
+    @bot.callback_query_handler(func=lambda call: call.data == "remove_event")
+    def admin_delete(call):
+        message = ServiceOperations.callback_convert(call)
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-        events = DatabaseOperations.get_all_events(session)[0]
+        events = DatabaseOperations.get_all_events()[0]
         for event in events:
             date = f"{event['date'].day}.{calendar[str(event['date'].month)]}"
             order = f"id:{event['user_id']} {event['user_first_name']} {date}\n {event['procedure1']}"
             markup.add(order)
         bot.send_message(ADMIN_ID, text="Який саме запис видалити?", reply_markup=markup)
         bot.register_next_step_handler(message, DatabaseOperations.rem_selected_order)
+
+    @staticmethod
+    @bot.callback_query_handler(func=lambda call: call.data == "schedule_settings")
+    def schedule_settings(call):
+        keyboard = InlineKeyboardMarkup()
+        default_week = InlineKeyboardButton("розклад днів тижня", callback_data="week_settings")
+        current_week_settings = InlineKeyboardButton("розклад цього тижня", callback_data="current_week")
+        next_week_settings = InlineKeyboardButton("розклад наступного тижня", callback_data="current_week")
+        set_schedule_by_day = InlineKeyboardButton("розклад на вибраний день", callback_data="set_day")
+        keyboard.add(default_week, current_week_settings, next_week_settings, set_schedule_by_day)
+        bot.send_message(ADMIN_ID,
+                         text="В цьому розділі ви можете планувати свій розклад",
+                         reply_markup=keyboard)
+
+    @staticmethod
+    @bot.callback_query_handler(func=lambda call: call.data == "week_settings")
+    def poll_week_settings(call):
+        CalendarHandlers.week_settings_sel_day(call)
 
     """End admin user options block"""
 
