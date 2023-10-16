@@ -1,9 +1,9 @@
 import re
 import random
-from datetime import time, timedelta
+from datetime import time, timedelta, date
 from telebot.types import User, Message, ReplyKeyboardRemove
 from static_data import session, Session, bot
-from models import User, Order
+from models import User, Order, DayShedule
 
 
 class DatabaseOperations:
@@ -200,6 +200,26 @@ class ServiceOperations:
                 return False
         else:
             return False
+
+
+class SheduleOperations:
+    @staticmethod
+    def check_shedule(count_days=5):
+        today = date.today()
+        shedule = DayShedule.get_all_shedule()
+        if len(shedule) < count_days:
+            next_dates = SheduleOperations.get_next_dates(today, count_dates=count_days)
+            for day in next_dates:
+                day_obj = DayShedule.create_self(day)
+                DayShedule.add_day(day_obj)
+
+    @staticmethod
+    def get_next_dates(start_date: date, count_dates: int) -> list:
+        dates = [start_date]
+        for _ in range(count_dates-1):
+            start_date += timedelta(days=1)
+            dates.append(start_date)
+        return dates
 
 
 def add_test_user():

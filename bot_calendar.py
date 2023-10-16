@@ -1,18 +1,12 @@
 from datetime import time, timedelta, date
 from telebot import types
-from static_data import session, bot
+from static_data import session, bot, week
 from services import ServiceOperations
-from models import WeekShedule, DefaultWeek
+from models import DefaultWeek
 from configs import ADMIN_ID
 
 
-week = {"Sunday": "Неділя",
-        "Monday": "Понеділок",
-        "Tuesday": "Вівторок",
-        "Wednesday": "Середа",
-        "Thursday": "Четвер",
-        "Friday": "П'ятниця",
-        "Saturday": "Субота"}
+
 
 selected_day = ""
 part_day = ""
@@ -21,6 +15,7 @@ parts_day = {"change_start_day": "початок дня",
              "break_start": "початок кава брейку",
              "break_duration": "тривалість кава брейку"}
 
+DefaultWeek.clear_default_shedule()
 
 default_start_time = time(12, 0)
 default_end_time = time(19, 0)
@@ -28,17 +23,20 @@ start_break = time(15, 0)
 coffe_break = timedelta(minutes=30)
 week_duration = timedelta(days=7)
 start_week = date(2023, 9, 25)
+is_working = True
+
 #
-# for day in week:
-#     day_of_week = str(week[day])
-#     default_day = DefaultWeek(
-#                             day_of_week=day_of_week,
-#                             start_time=default_start_time,
-#                             end_time=default_end_time,
-#                             start_coffee_break=start_break,
-#                             coffee_break_duration=coffe_break
-#                             )
-#     DefaultWeek.add_week_day(default_day)
+for day in week:
+    day_of_week = str(week[day])
+    default_day = DefaultWeek(
+                            day_of_week=day_of_week,
+                            start_time=default_start_time,
+                            end_time=default_end_time,
+                            start_coffee_break=start_break,
+                            coffee_break_duration=coffe_break,
+                            is_working=is_working
+                            )
+    DefaultWeek.add_week_day(default_day)
 
 
 class CalendarHandlers:

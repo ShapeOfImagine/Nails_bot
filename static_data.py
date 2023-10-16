@@ -29,6 +29,15 @@ calendar = {"1": "Січня",
             "12": "Грудня"}
 
 
+week = {"Sunday": "Неділя",
+        "Monday": "Понеділок",
+        "Tuesday": "Вівторок",
+        "Wednesday": "Середа",
+        "Thursday": "Четвер",
+        "Friday": "П'ятниця",
+        "Saturday": "Субота"}
+
+
 def clear_services():
     """CLEAR TEMPORARY FOLDER AFTER OR BEFORE USERGE"""
     new_services["services"].clear()

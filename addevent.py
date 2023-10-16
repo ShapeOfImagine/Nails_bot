@@ -154,7 +154,6 @@ class AddEvent:
     @staticmethod
     def final(message, meeting_time=False):
         """ADD EVENT TO DB IF USER ALREADY EXISTS"""
-        print(message.text)
         visiting_time["hour"] = message.text
         if not meeting_time:
             print(visiting_time["day"], visiting_time["hour"])
@@ -198,7 +197,7 @@ class AddEvent:
 
     @staticmethod
     def event_to_db(user_id: int, meeting_time: datetime):
-        time_price = TimeOperations.get_estimated_time(new_services["services"])
+        time_price = TimeOperations.get_estimated_time(new_services["services"], new_services["additions"])
         order_message = f"Ваше замовлення: {new_services['user_first_name']}\n"\
                         f"дата замовлення: " \
                         f"{TimeOperations.week[meeting_time.strftime('%A')]} " \

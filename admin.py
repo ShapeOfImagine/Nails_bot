@@ -1,5 +1,7 @@
 from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
+from datetime import date, timedelta
+
 from configs import ADMIN_ID
 from static_data import bot, session, calendar
 from addevent import AddEvent
@@ -29,14 +31,23 @@ class AdminServices:
     @bot.callback_query_handler(func=lambda call: call.data == "show_active_events")
     def show_active_events(call):
         events = DatabaseOperations.get_all_events()[0]
-        for event in events:
-            date = f"{event['date'].day}.{calendar[str(event['date'].month)]} " \
-                   f"{event['date'].hour}:{event['date'].minute}"
+        if events:
+            for event in events:
+                date = f"{event['date'].day}.{calendar[str(event['date'].month)]} " \
+                       f"{event['date'].hour}:{event['date'].minute}"
 
-            order = f"{event['user_first_name']} " \
-                    f" {date}\n {event['procedure1']} " \
-                    f"{event['procedure2']}"
-            bot.send_message(ADMIN_ID, order, reply_markup=ReplyKeyboardRemove())
+                order = f"{event['user_first_name']} " \
+                        f" {date}\n {event['procedure1']} " \
+                        f"{event['procedure2']}"
+                bot.send_message(ADMIN_ID, order, reply_markup=ReplyKeyboardRemove())
+        else:
+            keyboard = InlineKeyboardMarkup()
+            to_start = InlineKeyboardButton(text="На головну", callback_data="to_mainboard")
+            add_event = InlineKeyboardButton("Додати запис", callback_data="create_order")
+            keyboard.add(to_start, add_event)
+            bot.send_message(ADMIN_ID,
+                             text="Схоже що список записів наразі пустий",
+                             reply_markup=keyboard)
 
     @staticmethod
     @bot.callback_query_handler(func=lambda call: call.data == "remove_event")
@@ -69,6 +80,58 @@ class AdminServices:
     def poll_week_settings(call):
         CalendarHandlers.week_settings_sel_day(call)
 
+    @staticmethod
+    @bot.callback_query_handler(func=lambda call: call.data == "show_today_events")
+    def show_today_events(call):
+        today = date.today()
+        events = Order.get_orders_by_date(today)
+        if events:
+            for event in events:
+                bot.send_message(ADMIN_ID, text=event)
+            keyboard = InlineKeyboardMarkup()
+            to_start = InlineKeyboardButton(text="На головну", callback_data="to_mainboard")
+            add_event = InlineKeyboardButton("Додати запис", callback_data="create_order")
+            keyboard.add(to_start, add_event)
+            bot.send_message(ADMIN_ID,
+                             text="Можу ще чимось допомогти?",
+                             reply_markup=keyboard)
+
+        else:
+            keyboard = InlineKeyboardMarkup()
+            to_start = InlineKeyboardButton(text="На головну", callback_data="to_mainboard")
+            add_event = InlineKeyboardButton("Додати запис", callback_data="create_order")
+            keyboard.add(to_start, add_event)
+            bot.send_message(ADMIN_ID,
+                             text="На сьогодні список записів пустий",
+                             reply_markup=keyboard)
+
+    @staticmethod
+    @bot.callback_query_handler(func=lambda call: call.data == "show_tomorrow_events")
+    def show_tomorrow_events(call):
+        tomorrow = date.today()
+        tomorrow += timedelta(days=1)
+        events = Order.get_orders_by_date(tomorrow)
+        if events:
+            for event in events:
+                bot.send_message(ADMIN_ID, text=event)
+            keyboard = InlineKeyboardMarkup()
+            to_start = InlineKeyboardButton(text="На головну", callback_data="to_mainboard")
+            add_event = InlineKeyboardButton("Додати запис", callback_data="create_order")
+            keyboard.add(to_start, add_event)
+            bot.send_message(ADMIN_ID,
+                             text="Можу ще чимось допомогти?",
+                             reply_markup=keyboard)
+
+
+        else:
+            keyboard = InlineKeyboardMarkup()
+            to_start = InlineKeyboardButton(text="На головну", callback_data="to_mainboard")
+            add_event = InlineKeyboardButton("Додати запис", callback_data="create_order")
+            keyboard.add(to_start, add_event)
+            bot.send_message(ADMIN_ID,
+                             text="На завтра список записів пустий",
+                             reply_markup=keyboard)
+
     """End admin user options block"""
 
 
@@ -91,6 +154,7 @@ def start_create_event(message):
                                   "Ви можете змінити час або видалити і створити новий запис",
                              reply_markup=markup)
         else:
+
             bot.register_next_step_handler(message, AddEvent.wich_day)
     else:
         print("here")

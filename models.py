@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine, Column, Integer, String, \
     ForeignKey, DateTime, BigInteger, Boolean, Date, Time, Interval
+from sqlalchemy import MetaData, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import exists
-from sqlalchemy.orm import relationship
-from datetime import datetime, timedelta, time
-from static_data import session, db_url, Session
+from datetime import datetime, timedelta, time, date
+from static_data import session, db_url, Session, week
 
 engine = create_engine(db_url)
 
@@ -111,31 +111,6 @@ class Procedure(Base):
         return procedure
 
 
-class ProcedurePedikure(Base):
-
-    __tablename__ = "procedure_pedikure"
-
-    proc_name = Column(String, unique=True, primary_key=True)
-    proc_price = Column(Integer)
-    proc_time = Column(Integer)
-
-    def __init__(self, proc_name, proc_price, proc_time):
-        super().__init__()
-        self.proc_name = proc_name
-        self.proc_price = proc_price
-        self.proc_time = proc_time
-
-    def add_procedure(self):
-        session.add(self)
-        session.commit()
-        session.close()
-
-    @staticmethod
-    def get_procedure(proc_name: str):
-        procedure = session.query(ProcedurePedikure).filter_by(proc_name=proc_name).first()
-        return procedure
-
-
 class Addition(Base):
 
     __tablename__ = "additions"
@@ -149,6 +124,16 @@ class Addition(Base):
         self.addition_name = addition_name
         self.addition_price = addition_price
         self.addition_time = addition_time
+
+    def add_addition(self):
+        session.add(self)
+        session.commit()
+        session.close()
+
+    @staticmethod
+    def get_addition(addi_name: str):
+        addition = session.query(Addition).filter_by(addition_name=addi_name).first()
+        return addition
 
 
 class Order(Base):
@@ -177,6 +162,24 @@ class Order(Base):
         self.procedure4 = procedure4
         self.additions = additions
 
+    def __str__(self):
+        user = User.get_user(self.user_id)
+        user_first_name = user.user_first_name
+        user_phone = user.user_mobile
+        default_message = f"""Замовлення:  {user_first_name} Мобільний: {user_phone}\nЧас прийому: {self.meeting_time.strftime("%d.%m.%y  %H:%M")}\nПроцедура: {self.procedure1}\nДодатки: {self.additions}\
+                           """
+        intermediate_procedure = f"{self.procedure2}"
+        intermediate_procedure2 = f"{self.procedure3}"
+        second_procedure = f"Друга процедура: {self.procedure2}\nДодатки: {self.procedure4}"
+        if self.procedure2 != "false" and self.procedure4 != "false":
+            return default_message + second_procedure
+        elif self.procedure2 != "false" and self.procedure4 == "false":
+            return default_message + intermediate_procedure
+        elif self.procedure3 != "false":
+            return default_message + intermediate_procedure2 + second_procedure
+        else:
+            return default_message
+
     def add_order(self):
         session.add(self)
         session.commit()
@@ -186,6 +189,14 @@ class Order(Base):
     def get_user_order(user_id):
         order = session.query(Order).filter_by(user_id=user_id).first()
         return order
+
+    @staticmethod
+    def get_orders_by_date(order_date: date) -> list or bool:
+        orders = session.query(Order).filter(func.date(Order.meeting_time) == order_date).all()
+        if len(orders) > 0:
+            return orders
+        else:
+            return False
 
     @staticmethod
     def remove_order_record(user_id: int):
@@ -212,10 +223,12 @@ class DefaultWeek(Base):
     end_time = Column(Time)
     start_coffee_break = Column(Time)
     coffee_break_duration = Column(Interval)
+    is_working = Column(Boolean)
 
-    def __init__(self, day_of_week, start_time, end_time, start_coffee_break, coffee_break_duration):
+    def __init__(self, day_of_week, start_time, end_time, start_coffee_break, coffee_break_duration, is_working):
         super().__init__()
         self.day_of_week = day_of_week
+        self.is_working = is_working
         self.start_time = datetime.combine(datetime.today(), start_time)
         self.end_time = datetime.combine(datetime.today(), end_time)
         self.day_duration = self.end_time - self.start_time
@@ -253,6 +266,12 @@ class DefaultWeek(Base):
         self.coffee_break_duration = new_break_duration
 
     @staticmethod
+    def clear_default_shedule():
+        session.query(DefaultWeek).delete()
+        session.commit()
+        session.close()
+
+    @staticmethod
     def get_day(day_of_week):
         return session.query(DefaultWeek).filter_by(day_of_week=day_of_week).first()
 
@@ -270,52 +289,81 @@ class DefaultWeek(Base):
         return session.query(DefaultWeek).all()
 
 
-class WeekShedule(DefaultWeek):
-    __tablename__ = "week_shedule1"
-
-    id = Column(Integer, primary_key=True)
-    day_of_week = Column(String(20), ForeignKey("default_week.day_of_week"), unique=True, nullable=False, )
-    start_week = Column(Date)
-
-    def __init__(self, day_of_week, start_time, end_time, start_coffee_break, coffee_break_duration,
-                 start_week):
-        super().__init__(day_of_week, start_time, end_time, start_coffee_break, coffee_break_duration)
-        self.start_week = start_week
-        self.end_week = self.start_week + timedelta(days=6)
-
-    def __str__(self):
-        str_represent = f"""
-        Тиждень починається: {self.start_week.strftime('%d.%m.%y')}\n
-        Тиждень закінчується: {self.end_week.strftime('%d.%m.%y')}\n
-        """
-        return str_represent
-
-
 class DayShedule(Base):
 
     __tablename__ = "day_shedule"
 
     id = Column(Integer, primary_key=True)
-    day_of_week = Column(String(20), ForeignKey("week_shedule.day_of_week"), nullable=False)
-    calendar_day = Column(Date)
-    working = Column(Boolean, nullable=False)   # or not working day
-    start_day = Column(DateTime)
-    end_day = Column(DateTime)
-    coffe_break = Column(Interval)
+    day_of_week = Column(String(20), nullable=False)
+    calendar_day = Column(Date, unique=True)
+    is_working = Column(Boolean, nullable=False, default=True)   # or not working day
+    start_time = Column(Time)
+    end_time = Column(Time)
+    start_coffee_break = Column(Time)
+    coffe_break_duration = Column(Interval)
 
     # week_schedule = relationship('WeekSchedule', backref='days')
 
-    def __init__(self, calendar_day, start_day, end_day, coffe_break, working=True):
+    def add_day(self):
+        session.add(self)
+        session.commit()
+        session.close()
+
+    @staticmethod
+    def get_day(date: date):
+        day = session.query(DayShedule).filter_by(calendar_day=date).first()
+        if day:
+            return day
+        else:
+            return False
+
+    @staticmethod
+    def create_self(date: date):
+        day_of_week = week[date.strftime("%A")]
+        default_day = session.query(DefaultWeek).filter_by(day_of_week=day_of_week).first()
+        day = DayShedule(
+            day_of_week=day_of_week,
+            calendar_day=date,
+            start_time=default_day.start_time,
+            end_time=default_day.end_time,
+            start_coffe_break=default_day.start_coffee_break,
+            coffee_break_duration=default_day.coffee_break_duration,
+            is_working=True
+
+        )
+        return day
+
+    @staticmethod
+    def get_all_shedule():
+        shedule = session.query(DayShedule).all()
+        return shedule
+
+    def __init__(self, calendar_day, start_time, end_time, start_coffe_break,
+                 coffee_break_duration, day_of_week, is_working=True):
         super().__init__()
-        self.working = working
+        self.is_working = is_working
+        self.day_of_week = day_of_week
         self.calendar_day = calendar_day
-        self.start_day = start_day
-        self.end_day = end_day
-        self.coffe_break = coffe_break
+        self.start_time = start_time
+        self.end_time = end_time
+        self.start_coffe_break = start_coffe_break
+        self.coffe_break_duration = coffee_break_duration
+
+    def __str__(self):
+        rep_string = f"""
+            {self.day_of_week}\n
+            {self.calendar_day.strftime('%d.%m.%y')}\n
+            День робочий: {self.is_working}\n
+            Початок дня: {self.start_time}\n
+            Кінець дня: {self.end_time}"""
+        return rep_string
 
 
+new_metadata = MetaData()
+new_metadata.reflect(bind=engine)
+# Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
-#
+
 # #
 # procedure = Procedure(
 #     proc_name="Тільки пальчики",

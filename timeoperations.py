@@ -1,7 +1,7 @@
 from telebot import types
 from datetime import datetime, timedelta
-from models import Procedure, Order
-from static_data import bot, visiting_time, session, calendar
+from models import Procedure, Order, Addition
+from static_data import bot, visiting_time
 from services import DatabaseOperations
 
 
@@ -43,7 +43,7 @@ class TimeOperations:
         today = datetime.today()
         next_days = []
         reserved_dates = []
-        events = DatabaseOperations.get_all_events(session)[0]
+        events = DatabaseOperations.get_all_events()[0]
         for event in events:
             reserved_dates.append(event["date"].strftime("%d.%m.%y"))
         if today.strftime("%d.%m.%y") not in reserved_dates:
@@ -57,11 +57,11 @@ class TimeOperations:
 
     @staticmethod
     def rem_past_events():
-        events = DatabaseOperations.get_all_events(session)[0]
+        events = DatabaseOperations.get_all_events()[0]
         count = 0
         for event in events:
             if event["date"] < datetime.now():
-                DatabaseOperations.remove_order_record(session, event["user_id"])
+                Order.remove_order_record(event["user_id"])
                 count += 1
         print(f"{count} past events was deleted")
 
@@ -71,7 +71,7 @@ class TimeOperations:
             target_date = datetime.combine(target_date, datetime.min.time())
 
         try:
-            events = DatabaseOperations.get_all_events(session)[0]
+            events = DatabaseOperations.get_all_events()[0]
             for event in events:
                 if event["date"].strftime("%d.%m.%y") == target_date.strftime("%d.%m.%y"):
                     return event
@@ -102,6 +102,7 @@ class TimeOperations:
                               f"{TimeOperations.week[order.meeting_time.strftime('%A')]} "
                               f"{order.meeting_time.strftime('%d.%m %H:%M')}",
                          reply_markup=types.ReplyKeyboardRemove())
+
     @staticmethod
     def create_datetime(visiting_time: dict) -> datetime:
         year = int(f"20{visiting_time['day'][6:8]}")
@@ -113,13 +114,15 @@ class TimeOperations:
         return new_datetime
 
     @staticmethod
-    def get_estimated_time(procedures: list) -> dict:
+    def get_estimated_time(procedures: list, additives: list) -> dict:
         estimate_time = 0
         estimate_price = 0
         for procedure in procedures:
-            print(procedure)
             estimate_time += Procedure.get_procedure(proc_name=procedure).proc_time
             estimate_price += Procedure.get_procedure(proc_name=procedure).proc_price
+        for aditive in additives:
+            estimate_time += Addition.get_addition(aditive).addition_time
+            estimate_price += Addition.get_addition(aditive).addition_price
 
         return {"estim_time": estimate_time,
                 "estim_price": estimate_price}

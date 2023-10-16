@@ -196,14 +196,14 @@ def reminder():
 
 def start_bot():
     while True:
-        try:
+        # try:
             # Start polling
-            bot.polling(none_stop=True, interval=0, timeout=30)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            print("Retrying in 3 seconds...")
-            time.sleep(2)
-            bot.send_message(ADMIN_ID, text="Упс якась помилка перезапускаюсь")
+        bot.polling(none_stop=True, interval=0, timeout=30)
+        # except Exception as e:
+        #     print(f"An error occurred: {e}")
+        #     print("Retrying in 3 seconds...")
+        #     time.sleep(2)
+        #     bot.send_message(ADMIN_ID, text="Упс якась помилка перезапускаюсь")
 
 
 if __name__ == "__main__":
